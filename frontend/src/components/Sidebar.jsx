@@ -5,37 +5,59 @@ import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users, Search, Filter, X, UserPlus, Settings } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
+  const {
+    searchUsers,
+    users,
+    setUsers,
+    recentUsers,
+    selectedUser,
+    setSelectedUser,
+    isUsersLoading,
+  } = useChatStore();
+
   const { onlineUsers, authUser } = useAuthStore();
+
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
+  // Display recent users by default or when search is short
   useEffect(() => {
-    getUsers();
-  }, [getUsers]);
+    if (searchQuery.length < 3) {
+      setUsers(recentUsers);
+    }
+  }, [recentUsers, searchQuery, setUsers]);
 
-  // Filter users based on search and online status
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.username?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesOnlineFilter = showOnlineOnly ? onlineUsers.includes(user._id) : true;
-    return matchesSearch && matchesOnlineFilter;
-  });
+  
 
-  const onlineCount = onlineUsers.length - 1; // Exclude current user
+  // Debounced search on query changes (for 3+ chars)
+ useEffect(() => {
+  if (searchQuery.length < 3) {
+    setUsers(recentUsers);
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    searchUsers(searchQuery);
+  }, 1000);
+
+  return () => clearTimeout(timer);
+}, [searchQuery, recentUsers, searchUsers, setUsers]);  // These two stable from Zustand
+
+
+  // Filter users by online status if toggled
+  const filteredUsers = users.filter((user) =>
+    showOnlineOnly ? onlineUsers.includes(user._id) : true
+  );
+
+  const onlineCount = onlineUsers.length - 1; // Exclude yourself
 
   const clearSearch = () => {
     setSearchQuery("");
+    setUsers(recentUsers);
   };
 
-  const formatLastSeen = (user) => {
-    if (onlineUsers.includes(user._id)) {
-      return "Online";
-    }
-    // You can implement actual last seen logic here
-    return "Last seen recently";
-  };
+  const formatLastSeen = (user) => (onlineUsers.includes(user._id) ? "Online" : "Last seen recently");
 
   if (isUsersLoading) return <SidebarSkeleton />;
 
@@ -51,25 +73,25 @@ const Sidebar = () => {
             <div className="hidden lg:block">
               <h2 className="font-semibold text-base-content">Contacts</h2>
               <p className="text-xs text-base-content/70">
-                {onlineCount} online • {users.length} total
+                {onlineCount} online • {users.length} shown
               </p>
             </div>
           </div>
-          
           <div className="hidden lg:flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors duration-200 ${
-                showFilters || showOnlineOnly 
-                  ? "bg-primary/10 text-primary" 
+                showFilters || showOnlineOnly
+                  ? "bg-primary/10 text-primary"
                   : "text-base-content/70 hover:bg-base-200"
               }`}
               aria-label="Filter options"
             >
               <Filter className="w-4 h-4" />
             </button>
-            
             <button
+              type="button"
               className="p-2 rounded-lg text-base-content/70 hover:bg-base-200 transition-colors duration-200"
               aria-label="Add contact"
             >
@@ -87,10 +109,12 @@ const Sidebar = () => {
               placeholder="Search contacts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
               className="w-full pl-10 pr-10 py-2 bg-base-200 border border-base-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 text-base-content placeholder-base-content/50"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={clearSearch}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 hover:text-base-content/70"
               >
@@ -129,10 +153,17 @@ const Sidebar = () => {
               <Users className="w-8 h-8 text-base-content/50" />
             </div>
             <p className="text-sm text-base-content/70 text-center">
-              {searchQuery ? "No contacts found" : showOnlineOnly ? "No online contacts" : "No contacts yet"}
+              {searchQuery.length < 3
+                ? recentUsers.length === 0
+                  ? "No recent chats yet"
+                  : "Start typing to search contacts"
+                : users.length === 0
+                ? "No users found"
+                : null}
             </p>
-            {searchQuery && (
+            {searchQuery.length >= 3 && (
               <button
+                type="button"
                 onClick={clearSearch}
                 className="mt-2 text-primary text-sm hover:underline"
               >
@@ -145,9 +176,9 @@ const Sidebar = () => {
             {filteredUsers.map((user) => {
               const isSelected = selectedUser?._id === user._id;
               const isOnline = onlineUsers.includes(user._id);
-              
               return (
                 <button
+                  type="button"
                   key={user._id}
                   onClick={() => setSelectedUser(user)}
                   className={`w-full p-3 flex items-center gap-3 rounded-lg transition-all duration-200 group ${
@@ -165,41 +196,36 @@ const Sidebar = () => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    
-                    {/* Online Status */}
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-base-100 ${
-                      isOnline ? "bg-success" : "bg-base-content/30"
-                    }`}></div>
+                    {/* Online status */}
+                    <div
+                      className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-base-100 ${
+                        isOnline ? "bg-success" : "bg-base-content/30"
+                      }`}
+                    ></div>
                   </div>
-
-                  {/* User Info */}
+                  {/* User details */}
                   <div className="hidden lg:block flex-1 min-w-0 text-left">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className={`font-medium truncate ${
-                        isSelected 
-                          ? "text-primary" 
-                          : "text-base-content"
-                      }`}>
+                      <h3
+                        className={`font-medium truncate ${
+                          isSelected ? "text-primary" : "text-base-content"
+                        }`}
+                      >
                         {user.fullName || user.username}
                       </h3>
-                      
-                      {/* Unread indicator (placeholder) */}
-                      {/* <div className="w-2 h-2 bg-primary rounded-full"></div> */}
                     </div>
-                    
                     <div className="flex items-center justify-between">
-                      <p className={`text-xs truncate ${
-                        isSelected
-                          ? "text-primary/70"
-                          : isOnline
-                          ? "text-success"
-                          : "text-base-content/70"
-                      }`}>
+                      <p
+                        className={`text-xs truncate ${
+                          isSelected
+                            ? "text-primary/70"
+                            : isOnline
+                            ? "text-success"
+                            : "text-base-content/70"
+                        }`}
+                      >
                         {formatLastSeen(user)}
                       </p>
-                      
-                      {/* Last message time (placeholder) */}
-                      {/* <span className="text-xs text-base-content/50">2m</span> */}
                     </div>
                   </div>
                 </button>
@@ -222,15 +248,16 @@ const Sidebar = () => {
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-base-100"></div>
           </div>
-          
           <div className="hidden lg:block flex-1 min-w-0">
             <p className="font-medium text-base-content truncate text-sm">
               {authUser?.fullName || "You"}
             </p>
             <p className="text-xs text-success">Online</p>
           </div>
-          
-          <button className="hidden lg:block p-2 rounded-lg text-base-content/70 hover:bg-base-200 transition-colors duration-200">
+          <button
+            type="button"
+            className="hidden lg:block p-2 rounded-lg text-base-content/70 hover:bg-base-200 transition-colors duration-200"
+          >
             <Settings className="w-4 h-4" />
           </button>
         </div>

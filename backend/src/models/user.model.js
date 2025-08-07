@@ -7,6 +7,12 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
     fullName: {
       type: String,
       required: true,
@@ -23,6 +29,9 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Optional: for text search indexes
+userSchema.index({ fullName: "text", username: "text" });
 
 const User = mongoose.model("User", userSchema);
 
