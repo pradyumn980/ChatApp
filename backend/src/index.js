@@ -27,6 +27,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
+      "https://chat-app-eight-smoky-94.vercel.app",
       process.env.CLIENT_URL,
     ],
     credentials: true,
