@@ -54,7 +54,7 @@ const Sidebar = () => {
   const formatLastSeen = (user) =>
     onlineUsers.includes(user._id) ? "Online" : "Offline";
 
-  if (isUsersLoading) return <SidebarSkeleton />;
+  if (isUsersLoading && !searchQuery) return <SidebarSkeleton />;
 
   return (
     <aside className="h-full w-20 lg:w-80 bg-base-100 border-r border-base-300 flex flex-col transition-all duration-200 shadow-sm">
@@ -131,7 +131,12 @@ const Sidebar = () => {
 
       {/* ── User List ── */}
       <div className="flex-1 overflow-y-auto py-1 scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-transparent">
-        {filteredUsers.length === 0 ? (
+        {isUsersLoading && searchQuery ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 gap-2">
+            <span className="loading loading-spinner text-primary loading-md"></span>
+            <p className="text-xs text-base-content/50">Searching...</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4 gap-3">
             <div className="w-16 h-16 bg-base-200 rounded-full flex items-center justify-center">
               <Users className="w-8 h-8 text-base-content/30" />
