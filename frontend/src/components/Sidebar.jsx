@@ -9,7 +9,6 @@ const Sidebar = () => {
     searchUsers,
     users,
     setUsers,
-    recentUsers,
     selectedUser,
     setSelectedUser,
     isUsersLoading,
@@ -22,7 +21,7 @@ const Sidebar = () => {
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Load ALL users on mount (WhatsApp-style)
+  // Load active chats on mount
   useEffect(() => {
     getUsers();
   }, [getUsers]);
@@ -30,7 +29,7 @@ const Sidebar = () => {
   // Debounced search
   useEffect(() => {
     if (!searchQuery) {
-      // Reset to full list when search is cleared
+      // Reset to active chats list when search is cleared
       setUsers(allUsers || []);
       return;
     }
@@ -40,17 +39,8 @@ const Sidebar = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, allUsers, searchUsers, setUsers]);
 
-  // Sort: recent chats first, then the rest
-  const sortedUsers = [...users].sort((a, b) => {
-    const aIsRecent = recentUsers.some((r) => r._id === a._id);
-    const bIsRecent = recentUsers.some((r) => r._id === b._id);
-    if (aIsRecent && !bIsRecent) return -1;
-    if (!aIsRecent && bIsRecent) return 1;
-    return 0;
-  });
-
   // Filter by online status if toggled
-  const filteredUsers = sortedUsers.filter((user) =>
+  const filteredUsers = users.filter((user) =>
     showOnlineOnly ? onlineUsers.includes(user._id) : true
   );
 
@@ -147,7 +137,9 @@ const Sidebar = () => {
               <Users className="w-8 h-8 text-base-content/30" />
             </div>
             <p className="text-sm text-base-content/50 text-center">
-              {searchQuery ? "No users found" : "No contacts yet"}
+              {searchQuery
+                ? "No matching users found"
+                : "No recent chats. Search for a contact to start messaging!"}
             </p>
             {searchQuery && (
               <button
@@ -160,99 +152,69 @@ const Sidebar = () => {
             )}
           </div>
         ) : (
-          <>
-            {/* Recent chats section label */}
-            {!searchQuery && recentUsers.length > 0 && (
-              <p className="hidden lg:block px-4 pt-3 pb-1 text-xs font-semibold text-base-content/40 uppercase tracking-wider">
-                Recent
-              </p>
-            )}
+          filteredUsers.map((user) => {
+            const isSelected = selectedUser?._id === user._id;
+            const isOnline = onlineUsers.includes(user._id);
 
-            {filteredUsers.map((user, idx) => {
-              const isSelected = selectedUser?._id === user._id;
-              const isOnline = onlineUsers.includes(user._id);
-              const isRecent = recentUsers.some((r) => r._id === user._id);
-
-              // Section divider between recent and all contacts
-              const prevUser = filteredUsers[idx - 1];
-              const prevIsRecent =
-                prevUser && recentUsers.some((r) => r._id === prevUser._id);
-              const showDivider =
-                !searchQuery && !isRecent && idx > 0 && prevIsRecent;
-
-              return (
-                <div key={user._id}>
-                  {showDivider && (
-                    <p className="hidden lg:block px-4 pt-3 pb-1 text-xs font-semibold text-base-content/40 uppercase tracking-wider border-t border-base-200 mt-1">
-                      All contacts
-                    </p>
-                  )}
-                  {/* If there are no recent users and this is the first item, show "All contacts" header */}
-                  {!searchQuery && recentUsers.length === 0 && idx === 0 && (
-                    <p className="hidden lg:block px-4 pt-3 pb-1 text-xs font-semibold text-base-content/40 uppercase tracking-wider">
-                      All contacts
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUser(user)}
-                    className={`w-full px-3 py-2 flex items-center gap-3 transition-all duration-150 group ${
-                      isSelected
-                        ? "bg-primary/10 border-l-4 border-primary"
-                        : "hover:bg-base-200 border-l-4 border-transparent"
+            return (
+              <button
+                key={user._id}
+                type="button"
+                onClick={() => setSelectedUser(user)}
+                className={`w-full px-3 py-2 flex items-center gap-3 transition-all duration-150 group ${
+                  isSelected
+                    ? "bg-primary/10 border-l-4 border-primary"
+                    : "hover:bg-base-200 border-l-4 border-transparent"
+                }`}
+              >
+                {/* Avatar */}
+                <div className="relative flex-shrink-0 mx-auto lg:mx-0">
+                  <div
+                    className={`w-12 h-12 rounded-full overflow-hidden ring-2 ${
+                      isSelected ? "ring-primary/40" : "ring-base-200"
                     }`}
                   >
-                    {/* Avatar */}
-                    <div className="relative flex-shrink-0 mx-auto lg:mx-0">
-                      <div
-                        className={`w-12 h-12 rounded-full overflow-hidden ring-2 ${
-                          isSelected ? "ring-primary/40" : "ring-base-200"
-                        }`}
-                      >
-                        <img
-                          src={user.profilePic || "/avatar.png"}
-                          alt={user.fullName || user.username}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      {/* Online dot */}
-                      <span
-                        className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-base-100 ${
-                          isOnline ? "bg-success" : "bg-base-300"
-                        }`}
-                      />
-                    </div>
-
-                    {/* User info */}
-                    <div className="hidden lg:flex flex-1 min-w-0 flex-col text-left">
-                      <div className="flex items-center justify-between">
-                        <h3
-                          className={`font-medium text-sm truncate ${
-                            isSelected ? "text-primary" : "text-base-content"
-                          }`}
-                        >
-                          {user.fullName || user.username}
-                        </h3>
-                        {isOnline && (
-                          <span className="text-xs text-success font-medium ml-2 flex-shrink-0">
-                            ●
-                          </span>
-                        )}
-                      </div>
-                      <p
-                        className={`text-xs truncate mt-0.5 ${
-                          isOnline ? "text-success" : "text-base-content/50"
-                        }`}
-                      >
-                        {formatLastSeen(user)}
-                      </p>
-                    </div>
-                  </button>
+                    <img
+                      src={user.profilePic || "/avatar.png"}
+                      alt={user.fullName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Online dot */}
+                  <span
+                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-base-100 ${
+                      isOnline ? "bg-success" : "bg-base-300"
+                    }`}
+                  />
                 </div>
-              );
-            })}
-          </>
+
+                {/* User info */}
+                <div className="hidden lg:flex flex-1 min-w-0 flex-col text-left">
+                  <div className="flex items-center justify-between">
+                    <h3
+                      className={`font-medium text-sm truncate ${
+                        isSelected ? "text-primary" : "text-base-content"
+                      }`}
+                    >
+                      {user.fullName}
+                    </h3>
+                    {isOnline && (
+                      <span className="text-xs text-success font-medium ml-2 flex-shrink-0">
+                        ●
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className={`text-xs truncate mt-0.5 ${
+                      isOnline ? "text-success" : "text-base-content/50"
+                    }`}
+                  >
+                    {formatLastSeen(user)}
+                  </p>
+                </div>
+              </button>
+            );
+          })
         )}
       </div>
 

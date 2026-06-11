@@ -9,14 +9,27 @@ export const searchUsers = async (req, res) => {
     const users = await User.find({
       _id: { $ne: req.user._id },
       $or: [
-        { username: { $regex: query, $options: "i" } },  // if you have username in your schema
-        { fullName: { $regex: query, $options: "i" } }
+        { fullName: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } }
       ]
-    }).select("_id username fullName profilePic");
+    }).select("_id fullName email profilePic");
 
     res.json(users);
   } catch (error) {
     console.error("searchUsers error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error("getUserById error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -7,9 +7,53 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
-    res.status(200).json(filteredUsers);
+    // Aggregate messages to find all unique users we have chatted with
+    const activeChats = await Message.aggregate([
+      {
+        $match: {
+          $or: [
+            { senderId: loggedInUserId },
+            { receiverId: loggedInUserId }
+          ]
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$senderId", loggedInUserId] },
+              "$receiverId",
+              "$senderId"
+            ]
+          },
+          lastMessageAt: { $first: "$createdAt" }
+        }
+      },
+      {
+        $sort: { lastMessageAt: -1 }
+      }
+    ]);
+
+    const activeUserIds = activeChats.map(chat => chat._id);
+
+    // Fetch details of those users
+    const users = await User.find({ _id: { $in: activeUserIds } }).select("-password");
+
+    // Maintain the sorted order from activeChats
+    const usersMap = {};
+    users.forEach(user => {
+      usersMap[user._id.toString()] = user;
+    });
+
+    const sortedUsers = activeUserIds
+      .map(id => usersMap[id.toString()])
+      .filter(Boolean);
+
+    res.status(200).json(sortedUsers);
   } catch (error) {
     console.error("Error in getUsersForSidebar: ", error.message);
     res.status(500).json({ error: "Internal server error" });
