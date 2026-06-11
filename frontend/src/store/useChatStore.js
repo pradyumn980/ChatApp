@@ -7,6 +7,7 @@ export const useChatStore = create((set, get) => ({
   // State
   messages: [],
   users: [],
+  allUsers: [],     // Full list of all contacts (source of truth)
   recentUsers: [],  // Recent chats list
   selectedUser: null,
   isUsersLoading: false,
@@ -37,12 +38,12 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // Load users related to messages / recent chats (optional backend API)
+  // Load ALL users (WhatsApp-style: show everyone immediately)
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
-      set({ users: res.data, recentUsers: res.data });
+      set({ users: res.data, allUsers: res.data });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to get users");
     } finally {

@@ -16,7 +16,7 @@ dotenv.config();
 
 // Connect to MongoDB first
 connectDB();
-
+console.log(process.env.MONGO_URI);
 // Resolve the current directory path (for serving static files)
 const __dirname = path.resolve();
 

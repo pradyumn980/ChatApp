@@ -14,7 +14,8 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (user) return res.status(400).json({ message: "Email already exists" });
 
@@ -23,7 +24,7 @@ export const signup = async (req, res) => {
 
     const newUser = new User({
       fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
     });
 
@@ -50,7 +51,12 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
