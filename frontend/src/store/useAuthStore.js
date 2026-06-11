@@ -11,6 +11,7 @@ export const useAuthStore = create((set, get) => ({
   isLoggingIn: false,
   isUpdatingProfile: false,
   isCheckingAuth: true,
+  isResettingPassword: false,
   onlineUsers: [],
   socket: null,
 
@@ -50,12 +51,29 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Logged in successfully");
 
       get().connectSocket();
+      return { success: true };
     } catch (error) {
       toast.error(error.response?.data?.message || "Error logging in");
+      return { success: false, message: error.response?.data?.message };
     } finally {
       set({ isLoggingIn: false });
     }
   },
+
+  resetPassword: async (data) => {
+    set({ isResettingPassword: true });
+    try {
+      const res = await axiosInstance.post("/auth/reset-password", data);
+      toast.success(res.data.message || "Password reset successfully");
+      return { success: true };
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Error resetting password");
+      return { success: false, message: error.response?.data?.message };
+    } finally {
+      set({ isResettingPassword: false });
+    }
+  },
+
 
   logout: async () => {
     try {
