@@ -8,7 +8,7 @@ export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
-    // Aggregate messages to find all unique users we have chatted with
+    // Aggregate messages to find all unique users we have chatted with fixed
     const activeChats = await Message.aggregate([
       {
         $match: {
